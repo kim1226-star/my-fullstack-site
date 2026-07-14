@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { supabase } from './supabaseClient'
 import './App.css'
 
 const FEATURES = [
@@ -21,9 +22,31 @@ const FEATURES = [
 
 function App() {
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+
+    const form = e.currentTarget
+    const formData = new FormData(form)
+
+    const { error: insertError } = await supabase.from('leads').insert({
+      name: formData.get('name') as string,
+      contact: formData.get('contact') as string,
+      message: (formData.get('message') as string) || null,
+    })
+
+    setSubmitting(false)
+
+    if (insertError) {
+      setError('提交失败，请稍后再试。')
+      console.error(insertError)
+      return
+    }
+
     setSubmitted(true)
   }
 
@@ -104,12 +127,14 @@ function App() {
                     rows={4}
                   />
                 </label>
-                <button type="submit" className="btn btn--primary contact__submit">
-                  提交，获取免费优化
+                {error && <p className="contact__error">{error}</p>}
+                <button
+                  type="submit"
+                  className="btn btn--primary contact__submit"
+                  disabled={submitting}
+                >
+                  {submitting ? '提交中…' : '提交，获取免费优化'}
                 </button>
-                <p className="contact__hint">
-                  * 此表单暂为静态演示，尚未接入后端，提交不会实际发送数据。
-                </p>
               </form>
             )}
           </div>
